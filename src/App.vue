@@ -3,8 +3,9 @@ import { ref, onMounted } from 'vue';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import RestaurantSummary from './components/RestaurantSummary.vue';
+import RestaurantSidebar from './components/RestaurantSidebar.vue';
 
-const restaurantId = ref('B81066C002'); // Example: first LIC_NO from your dataset
+const restaurantId = ref('B81066C002');
 const restaurantData = ref(null);
 const showPopup = ref(false);
 
@@ -14,16 +15,14 @@ async function fetchRestaurant(id) {
   if (docSnap.exists()) {
     const data = docSnap.data();
     restaurantData.value = {
-      // Map Firestore fields to popup fields
       name: data.name,
-      location: data.address, // Use address for location
-      image: data.thumbnailUrl || '', // If you have an image field
-      // ...add more mappings as needed
+      location: data.address,
+      image: data.thumbnailUrl || '',
     };
     showPopup.value = true;
   } else {
     alert('Restaurant not found');
-  }ho
+  }
 }
 
 function onViewDetails(id) {
@@ -40,15 +39,22 @@ onMounted(() => {
 </script>
 
 <template>
-  <RestaurantSummary
-    v-if="showPopup && restaurantData"
-    :restaurant="restaurantData"
-    @view-details="onViewDetails"
-    @close="onClose"
-  />
+  <div id="app">
+    <RestaurantSidebar />
+    <RestaurantSummary
+      v-if="showPopup && restaurantData"
+      :restaurant="restaurantData"
+      @view-details="onViewDetails"
+      @close="onClose"
+    />
+  </div>
 </template>
 
 <style scoped>
+#app {
+  height: 100vh;
+  display: flex;
+}
 header {
   line-height: 1.5;
 }
@@ -57,7 +63,6 @@ header {
   display: block;
   margin: 0 auto 2rem;
 }
-
 
 @media (min-width: 1024px) {
   header {
