@@ -1,35 +1,57 @@
-@import './base.css';
+@import "./base.css";
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+:root {
+  --brand-green: #38c88f;
+  --brand-green-dark: #1f9f6d;
+  --brand-grey: #6f7888;
+  --brand-mint: #e4f4e8;
+  --brand-text: #18212f;
+  --brand-text-muted: #677281;
+  --brand-border: #d8dee6;
 }
 
-a,
-.green {
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+}
+
+#app {
+  isolation: isolate;
+  font-family: var(--font-family-base);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+svg,
+svg * {
+  font-family: inherit;
+}
+
+button,
+input,
+textarea,
+select,
+option {
+  font: inherit;
+}
+
+a {
+  color: var(--brand-green-dark);
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  transition: color 0.2s ease;
 }
 
 @media (hover: hover) {
   a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+    color: var(--brand-green);
   }
 }

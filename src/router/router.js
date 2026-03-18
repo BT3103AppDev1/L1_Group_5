@@ -1,14 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-// Pages
-import Landing from "./views/Landing.vue";
-import Login from "./views/Login.vue";
-import Register from "./views/Register.vue";
-import Dashboard from "./views/Dashboard.vue";
-import ForgotPassword from "./views/ForgotPassword.vue";
+import Landing from "../views/Landing.vue";
+import Login from "../views/Login.vue";
+import Register from "../views/Register.vue";
+import Dashboard from "../views/Dashboard.vue";
+import ForgotPassword from "../views/ForgotPassword.vue";
+import Tracker from "../views/Tracker.vue";
+import Profile from "../views/Profile.vue";
 
-// Firebase
-import { auth } from "./firebase";
+import { auth } from "../firebase";
 
 const routes = [
   {
@@ -16,12 +16,11 @@ const routes = [
     name: "Landing",
     component: Landing,
   },
-
   {
-  path: "/forgot-password",
-  component: ForgotPassword,
-},
-
+    path: "/forgot-password",
+    name: "ForgotPassword",
+    component: ForgotPassword,
+  },
   {
     path: "/login",
     name: "Login",
@@ -37,14 +36,15 @@ const routes = [
     name: "Dashboard",
     component: Dashboard,
   },
-  // optional future pages
   {
     path: "/tracker",
-    component: Dashboard,
+    name: "Tracker",
+    component: Tracker,
   },
   {
     path: "/profile",
-    component: Dashboard,
+    name: "Profile",
+    component: Profile,
   },
 ];
 
@@ -53,18 +53,13 @@ const router = createRouter({
   routes,
 });
 
-// 🔥 AUTH GUARD
 router.beforeEach((to, from, next) => {
   const user = auth.currentUser;
-
   const requiresAuth = ["/dashboard", "/tracker", "/profile"];
 
-  // ❌ Not logged in → block protected pages
   if (requiresAuth.includes(to.path) && !user) {
     next("/");
-  }
-  // ✅ Logged in → block landing/login/register
-  else if (
+  } else if (
     user &&
     (to.path === "/" || to.path === "/login" || to.path === "/register")
   ) {
