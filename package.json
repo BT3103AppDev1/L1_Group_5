@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.10.0",
+    "firebase-admin": "^13.7.0",
+    "geojson2csv": "^0.1.1",
     "vue": "^3.5.29"
   },
   "devDependencies": {
