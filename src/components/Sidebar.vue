@@ -61,6 +61,38 @@ const logout = async () => {
           <User class="icon" />
           <span>Profile</span>
         </button>
+        <button
+          @click="go('/dashboard')"
+          class="nav-item"
+          :class="{ active: route.path === '/dashboard' }"
+        >
+          <Home class="icon" />
+          <span>Home</span>
+        </button>
+
+        <button
+          @click="go('/map')"
+          class="nav-item"
+          :class="{ active: route.path === '/map' }"
+        >
+          <svg
+            class="icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+          </svg>
+          <span>Map</span>
+        </button>
       </nav>
     </div>
 
@@ -73,9 +105,7 @@ const logout = async () => {
       </div>
 
       <!-- LOGOUT -->
-      <button class="logout-btn" @click="logout">
-        Logout
-      </button>
+      <button class="logout-btn" @click="logout">Logout</button>
 
       <p class="copyright">© 2026 Munch Map SG</p>
     </div>
