@@ -1,132 +1,100 @@
-<script setup>
-import { ref, onMounted } from "vue";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
-
-import Sidebar from "../components/Sidebar.vue";
-import RestaurantSidebar from "../components/RestaurantSidebar.vue";
-import RestaurantSummary from "../components/RestaurantSummary.vue";
-import MapComponent from "../components/Map.vue";
-
-//const restaurantId = ref("B81066C002"); commented out to remove popup on load.
-const restaurantData = ref(null);
-const showPopup = ref(false);
-
-async function fetchRestaurant(id) {
-  try {
-    const docRef = doc(db, "restaurants", id);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-
-      restaurantData.value = {
-        id,
-        name: data.name,
-        location: data.address,
-        image: data.thumbnailUrl || "",
-      };
-      showPopup.value = true;
-    } else {
-      alert("Restaurant not found");
-    }
-  } catch (error) {
-    console.error("Error fetching restaurant:", error);
-    alert("Failed to fetch restaurant data");
-  }
-}
-
-function onViewDetails(id) {
-  alert("Navigate to restaurant page with id: " + id);
-}
-
-function onClose() {
-  showPopup.value = false;
-}
-
-onMounted(() => {
-  //fetchRestaurant(restaurantId.value); //commented out to remove popup on load.
-  console.log("Dashboard mounted: Ready for user interaction.");
-});
-</script>
-
 <template>
   <div class="layout">
     <Sidebar />
 
-    <div class="main">
-      <div class="content">
-        <header class="dashboard-header">
-          <h1>Dashboard</h1>
-          <p>Blah blah blah insert content here, would smash Amerse 10/10</p>
-        </header>
-
-        <div class="card">
-          <p>🍽 Meals, calories, map, etc will go here</p>
-        </div>
-
-        <div class="map-section">
-          <MapComponent @view-details="fetchRestaurant" />
-        </div>
-
-        <div class="restaurant-section">
-          <h2>Restaurant Preview</h2>
-          <RestaurantSidebar />
-        </div>
-      </div>
+    <div class="main-map">
+      <MapComponent 
+        v-model:isFilterOpen="isFilterOpen" 
+        @view-details="openRestaurantSidebar" 
+      />
     </div>
 
-    <RestaurantSummary
-      v-if="showPopup && restaurantData"
-      :restaurant="restaurantData"
-      @view-details="onViewDetails"
-      @close="onClose"
-    />
+    <transition name="slide">
+      <div v-if="selectedRestaurantId" class="restaurant-sidebar-container">
+        <button class="close-sidebar" @click="selectedRestaurantId = null">
+          ✕
+        </button>
+
+        <RestaurantSidebar :restaurantId="selectedRestaurantId" />
+      </div>
+    </transition>
   </div>
 </template>
+
+<script setup>
+import { ref, watch } from "vue";
+import Sidebar from "../components/Sidebar.vue";
+import MapComponent from "../components/Map.vue";
+import RestaurantSidebar from "../components/RestaurantSidebar.vue";
+
+const selectedRestaurantId = ref(null);
+const isFilterOpen = ref(false);
+
+const openRestaurantSidebar = (id) => {
+  console.log("Opening Sidebar for Restaurant ID:", id);
+  isFilterOpen.value = false; // Close the filter pane
+  selectedRestaurantId.value = id;
+};
+
+watch(isFilterOpen, (newVal) => {
+  if (newVal) {
+    selectedRestaurantId.value = null; //
+  }
+});
+</script>
 
 <style scoped>
 .layout {
   display: flex;
-}
-
-.main {
-  margin-left: 240px;
-  width: 100%;
-  min-height: 100vh;
-  background: #f9fafb;
-  overflow-y: auto;
-}
-
-.content { padding: 30px; }
-
-.dashboard-header { margin-bottom: 24px; }
-
-.map-section { /*this is the map container, to be replaced with MapPage.vue*/
-  height: 600px; 
-  width: 100%;
-  border-radius: 16px;
+  height: 100vh;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  margin-bottom: 24px;
 }
 
-.card {
-  margin-top: 20px;
-  padding: 20px;
+.main-map {
+  margin-left: 240px;
+  flex: 1;
+  position: relative;
+}
+
+/* Sidebar Container for the Right Side */
+.restaurant-sidebar-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 380px; /* Matches max-width in your team's RestaurantSidebar.vue */
   background: white;
-  border-radius: 12px;
-  border: 1px solid #eee;
+  z-index: 2000;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
 }
 
-.restaurant-section {
-  margin-top: 24px;
+.close-sidebar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 2010;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-sidebar:hover {
+  background: rgba(0, 0, 0, 0.1);
 }
 
-.restaurant-section h2 {
-  margin-bottom: 16px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2937;
+/* Vue Transition Animation */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease;
+}
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(100%);
 }
 </style>

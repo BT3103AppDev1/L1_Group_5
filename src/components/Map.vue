@@ -91,7 +91,7 @@
     </div>
 
     <div
-      v-if="activeFilters.searchMode === 'cuisine' && searchResults.length > 0"
+      v-if="activeFilters.cuisines.length > 0 && searchResults.length > 0"
       class="results-overlay"
     >
       <h3>
@@ -186,7 +186,7 @@ const emit = defineEmits(["view-details"]);
 // --- STATE ---
 const map = ref(null);
 const markersLayer = ref(null);
-const isFilterOpen = ref(false);
+const isFilterOpen = defineModel('isFilterOpen', { default: false });
 
 // Search State
 const searchQuery = ref("");
@@ -395,42 +395,55 @@ const clearAll = () => {
 
 const applyFilters = () => {
   activeFilters.value = JSON.parse(JSON.stringify(stagedFilters.value));
-  activeFilters.value.searchMode = null; // Clear strict search mode if using side panel
+  //activeFilters.value.searchMode = null; // Clear strict search mode if using side panel
   updateMapMarkers();
   isFilterOpen.value = false;
 };
 
 const updateMapMarkers = () => {
   if (!markersLayer.value || !map.value) return;
-  markersLayer.value.clearLayers();
 
-  const currentBounds = map.value.getBounds();
-  const f = activeFilters.value;
+  const f = activeFilters.value; //
+  const currentBounds = map.value.getBounds(); //
 
-  const filtered = dummyRestaurants.filter((r) => {
+  // STAGE 1: Global Filter (For the left Results Overlay)
+  // This ignores the map bounds so the user sees all matches in the database
+  const globalFiltered = dummyRestaurants.filter((r) => {
     // AC 9.2.2 Strict override for single restaurant search
     if (f.searchMode === "restaurant" && f.specificRestaurantId) {
       return r.id === f.specificRestaurantId;
     }
 
-    if (!currentBounds.contains([r.lat, r.lng])) return false;
+    // Filter by Cuisine
     if (
       f.cuisines.length > 0 &&
       !r.cuisineTypes.some((c) => f.cuisines.includes(c))
-    )
+    ) {
       return false;
-    if (f.dietary.length > 0 && !f.dietary.every((d) => r.dietary.includes(d)))
+    }
+
+    // Filter by Dietary
+    if (f.dietary.length > 0 && !f.dietary.every((d) => r.dietary.includes(d))) {
       return false;
+    }
 
     return true;
   });
 
-  // Save the filtered list for the left overlay panel
-  searchResults.value = filtered;
+  // Update the side panel with ALL matches
+  searchResults.value = globalFiltered;
 
-  filtered.forEach((restaurant) => {
+  // STAGE 2: Map Filter (For pins actually shown on screen)
+  // We only show markers for items that pass the global filter AND are inside the map view
+  const visibleMarkers = globalFiltered.filter((r) => 
+    currentBounds.contains([r.lat, r.lng])
+  );
+
+  // Clear existing layers and draw only visible markers
+  markersLayer.value.clearLayers();
+
+  visibleMarkers.forEach((restaurant) => {
     const marker = L.circleMarker([restaurant.lat, restaurant.lng], {
-      color: "#4db97f",
       fillColor: "#4db97f",
       fillOpacity: 0.9,
       radius: 8,
@@ -447,7 +460,13 @@ const updateMapMarkers = () => {
 
 // --- NAVIGATION ---
 const goToRestaurant = (id) => {
-  // Emits the event up to MapPage.vue / Dashboard.vue to handle routing
+  // Automatically close the filters when a restaurant is picked
+  isFilterOpen.value = false; 
+  
+  // Clear the search suggestions so the map is visible
+  showSuggestions.value = false; 
+
+  // Emit the event to show the summary or details
   emit("view-details", id);
 };
 </script>
@@ -541,6 +560,7 @@ const goToRestaurant = (id) => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  color: #1a1a1a;
 }
 
 .suggestion-item:hover {
