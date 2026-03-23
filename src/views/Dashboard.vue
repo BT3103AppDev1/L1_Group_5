@@ -6,8 +6,9 @@ import { db } from "../firebase";
 import Sidebar from "../components/Sidebar.vue";
 import RestaurantSidebar from "../components/RestaurantSidebar.vue";
 import RestaurantSummary from "../components/RestaurantSummary.vue";
+import MapComponent from "../components/Map.vue";
 
-const restaurantId = ref("B81066C002");
+//const restaurantId = ref("B81066C002"); commented out to remove popup on load.
 const restaurantData = ref(null);
 const showPopup = ref(false);
 
@@ -25,7 +26,6 @@ async function fetchRestaurant(id) {
         location: data.address,
         image: data.thumbnailUrl || "",
       };
-
       showPopup.value = true;
     } else {
       alert("Restaurant not found");
@@ -45,7 +45,8 @@ function onClose() {
 }
 
 onMounted(() => {
-  fetchRestaurant(restaurantId.value);
+  //fetchRestaurant(restaurantId.value); //commented out to remove popup on load.
+  console.log("Dashboard mounted: Ready for user interaction.");
 });
 </script>
 
@@ -55,11 +56,17 @@ onMounted(() => {
 
     <div class="main">
       <div class="content">
-        <h1>Dashboard</h1>
-        <p>This is your main content area.</p>
+        <header class="dashboard-header">
+          <h1>Dashboard</h1>
+          <p>Blah blah blah insert content here, would smash Amerse 10/10</p>
+        </header>
 
         <div class="card">
           <p>🍽 Meals, calories, map, etc will go here</p>
+        </div>
+
+        <div class="map-section">
+          <MapComponent @view-details="fetchRestaurant" />
         </div>
 
         <div class="restaurant-section">
@@ -91,8 +98,17 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.content {
-  padding: 30px;
+.content { padding: 30px; }
+
+.dashboard-header { margin-bottom: 24px; }
+
+.map-section { /*this is the map container, to be replaced with MapPage.vue*/
+  height: 600px; 
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
 }
 
 .card {

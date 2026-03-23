@@ -1,3 +1,5 @@
+<!-- This is an old MapPage file, to be deprecated and moved to components -->
+
 <template>
   <div class="layout">
     <Sidebar />

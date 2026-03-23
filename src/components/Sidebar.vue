@@ -61,16 +61,8 @@ const logout = async () => {
           <User class="icon" />
           <span>Profile</span>
         </button>
-        <button
-          @click="go('/dashboard')"
-          class="nav-item"
-          :class="{ active: route.path === '/dashboard' }"
-        >
-          <Home class="icon" />
-          <span>Home</span>
-        </button>
 
-        <button
+        <!-- <button commented out to delete button
           @click="go('/map')"
           class="nav-item"
           :class="{ active: route.path === '/map' }"
@@ -92,7 +84,7 @@ const logout = async () => {
             <line x1="15" y1="3" x2="15" y2="21"></line>
           </svg>
           <span>Map</span>
-        </button>
+        </button> --> 
       </nav>
     </div>
 
