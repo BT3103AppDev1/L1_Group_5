@@ -179,6 +179,7 @@
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import Fuse from "fuse.js";
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);
@@ -315,29 +316,59 @@ onUnmounted(() => {
 
 // --- SEARCH LOGIC ---
 const handleSearch = () => {
-  const query = searchQuery.value.toLowerCase().trim();
+  const query = searchQuery.value.trim();
 
-  // AC 9.1.2: Require minimum characters
+  // AC 9.1.2: Minimum 3 characters threshold
   if (query.length < 3) {
     showSuggestions.value = false;
     return;
   }
 
-  // Find matching restaurants
-  suggestions.value.restaurants = dummyRestaurants.filter((r) =>
-    r.name.toLowerCase().includes(query),
-  );
+  // 1. Setup Fuse for Restaurants
+  const restaurantOptions = {
+    keys: ["name"],
+    threshold: 0.4, // 0 is perfect match, 1 is no match. 0.4 is the sweet spot.
+  };
+  const restaurantFuse = new Fuse(dummyRestaurants, restaurantOptions); //
+  
+  // 2. Setup Fuse for Cuisines
+  // We extract unique cuisines from your options or dummy data
+  const cuisineFuse = new Fuse(options.cuisines, { threshold: 0.3 }); 
 
-  // Find matching cuisines
-  const allCuisines = [
-    ...new Set(dummyRestaurants.flatMap((r) => r.cuisineTypes)),
-  ];
-  suggestions.value.cuisines = allCuisines.filter((c) =>
-    c.toLowerCase().includes(query),
-  );
+  // 3. Execute Fuzzy Search
+  const restaurantResults = restaurantFuse.search(query);
+  const cuisineResults = cuisineFuse.search(query);
+
+  // 4. Map the results back to your suggestions format
+  suggestions.value.restaurants = restaurantResults.map(result => result.item);
+  suggestions.value.cuisines = cuisineResults.map(result => result.item);
 
   showSuggestions.value = true;
 };
+// const handleSearch = () => {
+//   const query = searchQuery.value.toLowerCase().trim();
+
+//   // AC 9.1.2: Require minimum characters
+//   if (query.length < 3) {
+//     showSuggestions.value = false;
+//     return;
+//   }
+
+//   // Find matching restaurants
+//   suggestions.value.restaurants = dummyRestaurants.filter((r) =>
+//     r.name.toLowerCase().includes(query),
+//   );
+
+//   // Find matching cuisines
+//   const allCuisines = [
+//     ...new Set(dummyRestaurants.flatMap((r) => r.cuisineTypes)),
+//   ];
+//   suggestions.value.cuisines = allCuisines.filter((c) =>
+//     c.toLowerCase().includes(query),
+//   );
+
+//   showSuggestions.value = true;
+// };
 
 const selectRestaurant = (restaurant) => {
   searchQuery.value = restaurant.name;
