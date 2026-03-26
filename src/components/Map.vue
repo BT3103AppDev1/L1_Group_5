@@ -91,7 +91,7 @@
     </div>
 
     <div
-      v-if="activeFilters.searchMode === 'cuisine' && searchResults.length > 0"
+      v-if="activeFilters.cuisines.length > 0 && searchResults.length > 0"
       class="results-overlay"
     >
       <h3>
@@ -179,6 +179,7 @@
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import Fuse from "fuse.js";
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);
@@ -186,7 +187,7 @@ const emit = defineEmits(["view-details"]);
 // --- STATE ---
 const map = ref(null);
 const markersLayer = ref(null);
-const isFilterOpen = ref(false);
+const isFilterOpen = defineModel('isFilterOpen', { default: false });
 
 // Search State
 const searchQuery = ref("");
@@ -315,29 +316,59 @@ onUnmounted(() => {
 
 // --- SEARCH LOGIC ---
 const handleSearch = () => {
-  const query = searchQuery.value.toLowerCase().trim();
+  const query = searchQuery.value.trim();
 
-  // AC 9.1.2: Require minimum characters
+  // AC 9.1.2: Minimum 3 characters threshold
   if (query.length < 3) {
     showSuggestions.value = false;
     return;
   }
 
-  // Find matching restaurants
-  suggestions.value.restaurants = dummyRestaurants.filter((r) =>
-    r.name.toLowerCase().includes(query),
-  );
+  // 1. Setup Fuse for Restaurants
+  const restaurantOptions = {
+    keys: ["name"],
+    threshold: 0.4, // 0 is perfect match, 1 is no match. 0.4 is the sweet spot.
+  };
+  const restaurantFuse = new Fuse(dummyRestaurants, restaurantOptions); //
+  
+  // 2. Setup Fuse for Cuisines
+  // We extract unique cuisines from your options or dummy data
+  const cuisineFuse = new Fuse(options.cuisines, { threshold: 0.3 }); 
 
-  // Find matching cuisines
-  const allCuisines = [
-    ...new Set(dummyRestaurants.flatMap((r) => r.cuisineTypes)),
-  ];
-  suggestions.value.cuisines = allCuisines.filter((c) =>
-    c.toLowerCase().includes(query),
-  );
+  // 3. Execute Fuzzy Search
+  const restaurantResults = restaurantFuse.search(query);
+  const cuisineResults = cuisineFuse.search(query);
+
+  // 4. Map the results back to your suggestions format
+  suggestions.value.restaurants = restaurantResults.map(result => result.item);
+  suggestions.value.cuisines = cuisineResults.map(result => result.item);
 
   showSuggestions.value = true;
 };
+// const handleSearch = () => {
+//   const query = searchQuery.value.toLowerCase().trim();
+
+//   // AC 9.1.2: Require minimum characters
+//   if (query.length < 3) {
+//     showSuggestions.value = false;
+//     return;
+//   }
+
+//   // Find matching restaurants
+//   suggestions.value.restaurants = dummyRestaurants.filter((r) =>
+//     r.name.toLowerCase().includes(query),
+//   );
+
+//   // Find matching cuisines
+//   const allCuisines = [
+//     ...new Set(dummyRestaurants.flatMap((r) => r.cuisineTypes)),
+//   ];
+//   suggestions.value.cuisines = allCuisines.filter((c) =>
+//     c.toLowerCase().includes(query),
+//   );
+
+//   showSuggestions.value = true;
+// };
 
 const selectRestaurant = (restaurant) => {
   searchQuery.value = restaurant.name;
@@ -395,42 +426,55 @@ const clearAll = () => {
 
 const applyFilters = () => {
   activeFilters.value = JSON.parse(JSON.stringify(stagedFilters.value));
-  activeFilters.value.searchMode = null; // Clear strict search mode if using side panel
+  //activeFilters.value.searchMode = null; // Clear strict search mode if using side panel
   updateMapMarkers();
   isFilterOpen.value = false;
 };
 
 const updateMapMarkers = () => {
   if (!markersLayer.value || !map.value) return;
-  markersLayer.value.clearLayers();
 
-  const currentBounds = map.value.getBounds();
-  const f = activeFilters.value;
+  const f = activeFilters.value; //
+  const currentBounds = map.value.getBounds(); //
 
-  const filtered = dummyRestaurants.filter((r) => {
+  // STAGE 1: Global Filter (For the left Results Overlay)
+  // This ignores the map bounds so the user sees all matches in the database
+  const globalFiltered = dummyRestaurants.filter((r) => {
     // AC 9.2.2 Strict override for single restaurant search
     if (f.searchMode === "restaurant" && f.specificRestaurantId) {
       return r.id === f.specificRestaurantId;
     }
 
-    if (!currentBounds.contains([r.lat, r.lng])) return false;
+    // Filter by Cuisine
     if (
       f.cuisines.length > 0 &&
       !r.cuisineTypes.some((c) => f.cuisines.includes(c))
-    )
+    ) {
       return false;
-    if (f.dietary.length > 0 && !f.dietary.every((d) => r.dietary.includes(d)))
+    }
+
+    // Filter by Dietary
+    if (f.dietary.length > 0 && !f.dietary.every((d) => r.dietary.includes(d))) {
       return false;
+    }
 
     return true;
   });
 
-  // Save the filtered list for the left overlay panel
-  searchResults.value = filtered;
+  // Update the side panel with ALL matches
+  searchResults.value = globalFiltered;
 
-  filtered.forEach((restaurant) => {
+  // STAGE 2: Map Filter (For pins actually shown on screen)
+  // We only show markers for items that pass the global filter AND are inside the map view
+  const visibleMarkers = globalFiltered.filter((r) => 
+    currentBounds.contains([r.lat, r.lng])
+  );
+
+  // Clear existing layers and draw only visible markers
+  markersLayer.value.clearLayers();
+
+  visibleMarkers.forEach((restaurant) => {
     const marker = L.circleMarker([restaurant.lat, restaurant.lng], {
-      color: "#4db97f",
       fillColor: "#4db97f",
       fillOpacity: 0.9,
       radius: 8,
@@ -447,7 +491,13 @@ const updateMapMarkers = () => {
 
 // --- NAVIGATION ---
 const goToRestaurant = (id) => {
-  // Emits the event up to MapPage.vue / Dashboard.vue to handle routing
+  // Automatically close the filters when a restaurant is picked
+  isFilterOpen.value = false; 
+  
+  // Clear the search suggestions so the map is visible
+  showSuggestions.value = false; 
+
+  // Emit the event to show the summary or details
   emit("view-details", id);
 };
 </script>
@@ -541,6 +591,7 @@ const goToRestaurant = (id) => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  color: #1a1a1a;
 }
 
 .suggestion-item:hover {

@@ -11,6 +11,7 @@
   "dependencies": {
     "firebase": "^12.10.0",
     "firebase-admin": "^13.7.0",
+    "fuse.js": "^7.1.0",
     "geojson2csv": "^0.1.1",
     "leaflet": "^1.9.4",
     "lucide-vue-next": "^0.577.0",

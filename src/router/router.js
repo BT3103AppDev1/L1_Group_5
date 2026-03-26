@@ -7,7 +7,6 @@ import Dashboard from "../views/Dashboard.vue";
 import ForgotPassword from "../views/ForgotPassword.vue";
 import Tracker from "../views/Tracker.vue";
 import Profile from "../views/Profile.vue";
-import MapPage from "../views/MapPage.vue";
 
 import { auth } from "../firebase";
 
@@ -47,11 +46,11 @@ const routes = [
     name: "Profile",
     component: Profile,
   },
-  {
+ /* { to be deprecated since map page is now integrated into dashboard
     path: "/map",
     name: "Map",
     component: MapPage,
-  },
+  },*/
 ];
 
 const router = createRouter({
