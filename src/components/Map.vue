@@ -180,6 +180,9 @@ import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Fuse from "fuse.js";
+import { useRestaurants } from "../composables/useRestaurants";
+
+const { restaurantsDB } = useRestaurants(); // This is your "database variable"
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);

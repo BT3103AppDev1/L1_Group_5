@@ -26,7 +26,10 @@ import { ref, watch } from "vue";
 import Sidebar from "../components/Sidebar.vue";
 import MapComponent from "../components/Map.vue";
 import RestaurantSidebar from "../components/RestaurantSidebar.vue";
+import { onMounted } from "vue";
+import { useRestaurants } from "../composables/useRestaurants";
 
+const { fetchAll } = useRestaurants();
 const selectedRestaurantId = ref(null);
 const isFilterOpen = ref(false);
 
@@ -40,6 +43,10 @@ watch(isFilterOpen, (newVal) => {
   if (newVal) {
     selectedRestaurantId.value = null; //
   }
+});
+
+onMounted(() => {
+  fetchAll(); // Calls Firestore once when the dashboard loads
 });
 </script>
 
