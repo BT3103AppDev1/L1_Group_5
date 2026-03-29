@@ -180,6 +180,9 @@ import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Fuse from "fuse.js";
+import { useRestaurants } from "../composables/useRestaurants";
+
+const { restaurants, loading, fetchAll } = useRestaurants(); // This is your "database variable"
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);
@@ -187,7 +190,7 @@ const emit = defineEmits(["view-details"]);
 // --- STATE ---
 const map = ref(null);
 const markersLayer = ref(null);
-const isFilterOpen = defineModel('isFilterOpen', { default: false });
+const isFilterOpen = defineModel("isFilterOpen", { default: false });
 
 // Search State
 const searchQuery = ref("");
@@ -196,23 +199,22 @@ const suggestions = ref({ cuisines: [], restaurants: [] });
 const searchResults = ref([]); // Holds data for the left panel
 
 // Filter State
-const options = {
-  cuisines: [
-    "Japanese",
-    "Italian",
-    "Mexican",
-    "Chinese",
-    "Korean",
-    "Thai",
-    "Vietnamese",
-    "Indian",
-    "Mediterranean",
-    "Hawaiian",
-    "Grilled",
-    "Salads & Bowls",
-  ],
-  dietary: ["Vegetarian", "Halal", "Vegan", "Gluten-Free"],
-};
+const options = computed(() => {
+  // 1. Extract every single cuisine from every restaurant into one giant array
+  const allCuisines = safeRestaurants.value.flatMap((r) => r.cuisineTypes);
+
+  // 2. Put them in a Set (which automatically deletes duplicates), then sort alphabetically
+  const uniqueCuisines = [...new Set(allCuisines)].sort();
+
+  // 3. Do the exact same thing for dietary preferences
+  const allDietary = safeRestaurants.value.flatMap((r) => r.dietary);
+  const uniqueDietary = [...new Set(allDietary)].sort();
+
+  return {
+    cuisines: uniqueCuisines,
+    dietary: uniqueDietary,
+  };
+});
 
 const defaultFilters = {
   searchMode: null, // 'restaurant' or 'cuisine'
@@ -224,59 +226,40 @@ const defaultFilters = {
 const stagedFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 const activeFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 
-// Dummy Data
-const dummyRestaurants = [
-  {
-    id: 1,
-    name: "Clarke Quay Grill",
-    lat: 1.2891,
-    lng: 103.845,
-    cuisineTypes: ["Grilled"],
-    dietary: [],
-    calories: 600,
-    price: 35,
-  },
-  {
-    id: 2,
-    name: "Novena Salad Bar",
-    lat: 1.3204,
-    lng: 103.8438,
-    cuisineTypes: ["Salads & Bowls"],
-    dietary: ["Vegetarian", "Vegan", "Halal"],
-    calories: 350,
-    price: 15,
-  },
-  {
-    id: 3,
-    name: "Boon Keng Protein Bowl",
-    lat: 1.3198,
-    lng: 103.8616,
-    cuisineTypes: ["Salads & Bowls"],
-    dietary: ["Halal", "Gluten-Free"],
-    calories: 550,
-    price: 18,
-  },
-  {
-    id: 4,
-    name: "Sushi Tei Orchard",
-    lat: 1.3039,
-    lng: 103.832,
-    cuisineTypes: ["Japanese"],
-    dietary: [],
-    calories: 700,
-    price: 40,
-  },
-  {
-    id: 5,
-    name: "Guzman Y Gomez",
-    lat: 1.2847,
-    lng: 103.8521,
-    cuisineTypes: ["Mexican"],
-    dietary: ["Gluten-Free"],
-    calories: 850,
-    price: 22,
-  },
-];
+// --- DATA FORMATTER ---
+// Automatically maps Firebase fields to the format your map UI expects
+const safeRestaurants = computed(() => {
+  return restaurants.value
+    .map((r) => {
+      // Safely average calories from the menuItems array
+      let avgCalories = 0;
+      if (r.menuItems && r.menuItems.length > 0) {
+        const totalCals = r.menuItems.reduce(
+          (sum, item) => sum + (item.calories || 0),
+          0,
+        );
+        avgCalories = Math.round(totalCals / r.menuItems.length);
+      }
+
+      return {
+        id: r.id,
+        name: r.business_name || "Unknown Restaurant",
+        lat: r.latitude,
+        lng: r.longitude,
+        cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
+
+        // --- UPDATED SAFEGUARD HERE ---
+        dietary: String(r.dietaryPreferences || "")
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
+        // ------------------------------
+
+        calories: avgCalories,
+      };
+    })
+    .filter((r) => r.lat !== undefined && r.lng !== undefined); // Prevents map crashes!
+});
 
 // --- MAP INITIALIZATION ---
 const SG_BOUNDS = L.latLngBounds(
@@ -284,7 +267,7 @@ const SG_BOUNDS = L.latLngBounds(
   L.latLng(1.483, 104.044),
 );
 
-onMounted(() => {
+onMounted(async () => {
   map.value = L.map("munch-map", {
     center: [1.305, 103.845],
     zoom: 13,
@@ -307,6 +290,10 @@ onMounted(() => {
     updateMapMarkers();
   });
 
+  // 1. Fetch the safe 50-item list (Composable handles the quota protection)
+  await fetchAll();
+
+  // 2. Draw the live pins!
   updateMapMarkers();
 });
 
@@ -329,19 +316,21 @@ const handleSearch = () => {
     keys: ["name"],
     threshold: 0.4, // 0 is perfect match, 1 is no match. 0.4 is the sweet spot.
   };
-  const restaurantFuse = new Fuse(dummyRestaurants, restaurantOptions); //
-  
+  const restaurantFuse = new Fuse(safeRestaurants.value, restaurantOptions);
+
   // 2. Setup Fuse for Cuisines
   // We extract unique cuisines from your options or dummy data
-  const cuisineFuse = new Fuse(options.cuisines, { threshold: 0.3 }); 
+  const cuisineFuse = new Fuse(options.cuisines, { threshold: 0.3 });
 
   // 3. Execute Fuzzy Search
   const restaurantResults = restaurantFuse.search(query);
   const cuisineResults = cuisineFuse.search(query);
 
   // 4. Map the results back to your suggestions format
-  suggestions.value.restaurants = restaurantResults.map(result => result.item);
-  suggestions.value.cuisines = cuisineResults.map(result => result.item);
+  suggestions.value.restaurants = restaurantResults.map(
+    (result) => result.item,
+  );
+  suggestions.value.cuisines = cuisineResults.map((result) => result.item);
 
   showSuggestions.value = true;
 };
@@ -439,7 +428,7 @@ const updateMapMarkers = () => {
 
   // STAGE 1: Global Filter (For the left Results Overlay)
   // This ignores the map bounds so the user sees all matches in the database
-  const globalFiltered = dummyRestaurants.filter((r) => {
+  const globalFiltered = safeRestaurants.value.filter((r) => {
     // AC 9.2.2 Strict override for single restaurant search
     if (f.searchMode === "restaurant" && f.specificRestaurantId) {
       return r.id === f.specificRestaurantId;
@@ -454,7 +443,10 @@ const updateMapMarkers = () => {
     }
 
     // Filter by Dietary
-    if (f.dietary.length > 0 && !f.dietary.every((d) => r.dietary.includes(d))) {
+    if (
+      f.dietary.length > 0 &&
+      !f.dietary.every((d) => r.dietary.includes(d))
+    ) {
       return false;
     }
 
@@ -466,8 +458,8 @@ const updateMapMarkers = () => {
 
   // STAGE 2: Map Filter (For pins actually shown on screen)
   // We only show markers for items that pass the global filter AND are inside the map view
-  const visibleMarkers = globalFiltered.filter((r) => 
-    currentBounds.contains([r.lat, r.lng])
+  const visibleMarkers = globalFiltered.filter((r) =>
+    currentBounds.contains([r.lat, r.lng]),
   );
 
   // Clear existing layers and draw only visible markers
@@ -492,10 +484,10 @@ const updateMapMarkers = () => {
 // --- NAVIGATION ---
 const goToRestaurant = (id) => {
   // Automatically close the filters when a restaurant is picked
-  isFilterOpen.value = false; 
-  
+  isFilterOpen.value = false;
+
   // Clear the search suggestions so the map is visible
-  showSuggestions.value = false; 
+  showSuggestions.value = false;
 
   // Emit the event to show the summary or details
   emit("view-details", id);
