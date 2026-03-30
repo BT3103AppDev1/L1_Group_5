@@ -7,6 +7,11 @@ import {
 } from "firebase/auth";
 import { useRouter } from "vue-router";
 import { auth } from "../firebase";
+import {
+  clearPreparedSessionLogin,
+  markSessionActive,
+  prepareSessionLogin,
+} from "../services/authSession";
 import logo from "../assets/munchmap.png";
 
 const email = ref("");
@@ -34,23 +39,29 @@ const getRegistrationErrorMessage = (error) => {
 
 const register = async () => {
   errorMessage.value = "";
+  prepareSessionLogin();
 
   try {
     await createUserWithEmailAndPassword(auth, email.value, password.value);
+    markSessionActive();
     router.push("/dashboard");
   } catch (error) {
+    clearPreparedSessionLogin();
     errorMessage.value = getRegistrationErrorMessage(error);
   }
 };
 
 const registerWithGoogle = async () => {
   errorMessage.value = "";
+  prepareSessionLogin();
 
   try {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
+    markSessionActive();
     router.push("/dashboard");
   } catch (error) {
+    clearPreparedSessionLogin();
     errorMessage.value = getRegistrationErrorMessage(error);
   }
 };
