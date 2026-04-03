@@ -320,7 +320,7 @@ const handleSearch = () => {
 
   // 2. Setup Fuse for Cuisines
   // We extract unique cuisines from your options or dummy data
-  const cuisineFuse = new Fuse(options.cuisines, { threshold: 0.3 });
+  const cuisineFuse = new Fuse(options.value.cuisines, { threshold: 0.3 });
 
   // 3. Execute Fuzzy Search
   const restaurantResults = restaurantFuse.search(query);
