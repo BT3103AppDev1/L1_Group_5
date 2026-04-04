@@ -1,7 +1,7 @@
 <template>
   <div class="restaurant-sidebar">
     <RestaurantInfo :restaurant="restaurant" />
-    <RestaurantMenu :menuItems="menuItems" />
+    <RestaurantMenu :menuItems="menuItems" :restaurantName="restaurant?.business_name || 'Restaurant'" />
   </div>
 </template>
 

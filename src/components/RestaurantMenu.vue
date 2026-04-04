@@ -49,10 +49,7 @@
           <!-- Meal Info -->
           <div class="modal-meal-info">
             <h2 class="modal-meal-name">{{ selectedItem.name }}</h2>
-            <p class="modal-meal-source">RESTAURANT MENU</p>
-            
-            <!-- Date and Meal Time Display -->
-            <p class="modal-meal-time">{{ mealTimeLabel }} | {{ formatDate(logForm.date) }}</p>
+            <p class="modal-meal-source">{{ restaurantName }}</p>
 
             <!-- Macros Grid -->
             <div class="modal-macros-grid">
@@ -118,9 +115,13 @@ const props = defineProps({
   menuItems: {
     type: Array,
     default: () => []
+  },
+  restaurantName: {
+    type: String,
+    default: 'Restaurant'
   }
 });
-const { menuItems } = toRefs(props);
+const { menuItems, restaurantName } = toRefs(props);
 
 const currentUser = ref(null);
 const isModalOpen = ref(false);
