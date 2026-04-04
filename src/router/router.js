@@ -10,6 +10,7 @@ import Profile from "../views/Profile.vue";
 import DataTest from "../views/dataTest.vue";
 
 import { auth } from "../firebase";
+import { waitForAuthReady } from "../services/authSession";
 
 const routes = [
   {
@@ -59,7 +60,9 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  await waitForAuthReady();
+
   const user = auth.currentUser;
   const requiresAuth = ["/dashboard", "/tracker", "/profile"];
 

@@ -2,5 +2,11 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router/router";
 import "./assets/main.css";
+import { initializeAuthSession } from "./services/authSession";
 
-createApp(App).use(router).mount("#app");
+const bootstrap = async () => {
+  await initializeAuthSession(router);
+  createApp(App).use(router).mount("#app");
+};
+
+bootstrap();
