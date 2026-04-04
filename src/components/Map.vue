@@ -176,13 +176,13 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Fuse from "fuse.js";
-import { useRestaurantFilterOptions } from "../composables/useRestaurantFilterOptions";
+import { useRestaurants } from "../composables/useRestaurants";
 
-const { fetchAll, mappableRestaurants, options } = useRestaurantFilterOptions();
+const { restaurants, loading, fetchAll } = useRestaurants(); // This is your "database variable"
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);
@@ -198,6 +198,24 @@ const showSuggestions = ref(false);
 const suggestions = ref({ cuisines: [], restaurants: [] });
 const searchResults = ref([]); // Holds data for the left panel
 
+// Filter State
+const options = computed(() => {
+  // 1. Extract every single cuisine from every restaurant into one giant array
+  const allCuisines = safeRestaurants.value.flatMap((r) => r.cuisineTypes);
+
+  // 2. Put them in a Set (which automatically deletes duplicates), then sort alphabetically
+  const uniqueCuisines = [...new Set(allCuisines)].sort();
+
+  // 3. Do the exact same thing for dietary preferences
+  const allDietary = safeRestaurants.value.flatMap((r) => r.dietary);
+  const uniqueDietary = [...new Set(allDietary)].sort();
+
+  return {
+    cuisines: uniqueCuisines,
+    dietary: uniqueDietary,
+  };
+});
+
 const defaultFilters = {
   searchMode: null, // 'restaurant' or 'cuisine'
   specificRestaurantId: null,
@@ -207,6 +225,41 @@ const defaultFilters = {
 
 const stagedFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 const activeFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
+
+// --- DATA FORMATTER ---
+// Automatically maps Firebase fields to the format your map UI expects
+const safeRestaurants = computed(() => {
+  return restaurants.value
+    .map((r) => {
+      // Safely average calories from the menuItems array
+      let avgCalories = 0;
+      if (r.menuItems && r.menuItems.length > 0) {
+        const totalCals = r.menuItems.reduce(
+          (sum, item) => sum + (item.calories || 0),
+          0,
+        );
+        avgCalories = Math.round(totalCals / r.menuItems.length);
+      }
+
+      return {
+        id: r.id,
+        name: r.business_name || "Unknown Restaurant",
+        lat: r.latitude,
+        lng: r.longitude,
+        cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
+
+        // --- UPDATED SAFEGUARD HERE ---
+        dietary: String(r.dietaryPreferences || "")
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
+        // ------------------------------
+
+        calories: avgCalories,
+      };
+    })
+    .filter((r) => r.lat !== undefined && r.lng !== undefined); // Prevents map crashes!
+});
 
 // --- MAP INITIALIZATION ---
 const SG_BOUNDS = L.latLngBounds(
@@ -263,7 +316,7 @@ const handleSearch = () => {
     keys: ["name"],
     threshold: 0.4, // 0 is perfect match, 1 is no match. 0.4 is the sweet spot.
   };
-  const restaurantFuse = new Fuse(mappableRestaurants.value, restaurantOptions);
+  const restaurantFuse = new Fuse(safeRestaurants.value, restaurantOptions);
 
   // 2. Setup Fuse for Cuisines
   // We extract unique cuisines from your options or dummy data
@@ -375,7 +428,7 @@ const updateMapMarkers = () => {
 
   // STAGE 1: Global Filter (For the left Results Overlay)
   // This ignores the map bounds so the user sees all matches in the database
-  const globalFiltered = mappableRestaurants.value.filter((r) => {
+  const globalFiltered = safeRestaurants.value.filter((r) => {
     // AC 9.2.2 Strict override for single restaurant search
     if (f.searchMode === "restaurant" && f.specificRestaurantId) {
       return r.id === f.specificRestaurantId;
