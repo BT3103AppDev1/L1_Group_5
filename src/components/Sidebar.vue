@@ -1,9 +1,8 @@
 <script setup>
 import { useRoute, useRouter } from "vue-router";
 import { Home, Activity, User } from "lucide-vue-next";
-import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
 import logo from "../assets/munchmap.png";
+import { endSession } from "../services/authSession";
 
 const route = useRoute();
 const router = useRouter();
@@ -15,8 +14,7 @@ const go = (path) => {
 
 // logout
 const logout = async () => {
-  await signOut(auth);
-  router.push("/");
+  await endSession("manual", "/");
 };
 </script>
 

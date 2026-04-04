@@ -14,7 +14,8 @@ const resetPassword = async () => {
 
   try {
     await sendPasswordResetEmail(auth, email.value);
-    message.value = "Password reset email sent. Check your inbox for the reset link.";
+    message.value =
+      "Password reset email sent. Use the link in your inbox to choose a new password, and it will replace your current one.";
   } catch (resetError) {
     error.value = resetError.message || "Unable to send the reset email right now.";
   }

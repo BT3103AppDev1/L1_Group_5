@@ -7,9 +7,9 @@
         <section class="tracker-hero">
           <div class="tracker-hero-copy">
             <p class="tracker-kicker">Macro Tracker</p>
-            <h1 class="tracker-title">A calmer way to keep your nutrition in check.</h1>
+            <h1 class="tracker-title">Nutrition Tracking Made Easy</h1>
             <p class="tracker-description">
-              Review daily progress, search the shared food database, and keep your meal log tidy.
+              Review daily progress, and keep your meal log tidy.
             </p>
 
             <div class="tracker-hero-actions">
@@ -541,9 +541,11 @@ import {
 } from "firebase/firestore";
 import Sidebar from "../components/Sidebar.vue";
 import { auth, db } from "../firebase";
+import { useUserProfile } from "../composables/useUserProfile";
 
-const calorieGoal = 2500;
-const macroGoals = {
+const { profile, loadProfile } = useUserProfile();
+const fallbackNutritionGoals = {
+  calories: 2500,
   carbs: 250,
   protein: 150,
   fat: 80,
@@ -688,6 +690,13 @@ function roundMacro(value) {
 
 function roundServings(value) {
   return Math.round(value * 2) / 2;
+}
+
+function resolveGoalValue(value, fallbackValue) {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : fallbackValue;
 }
 
 function matchesCalorieRange(calories, range) {
@@ -915,6 +924,25 @@ const selectedDateContext = computed(
   () => `${selectedDateHeading.value} | ${selectedDateSubheading.value}`,
 );
 
+const calorieGoal = computed(() =>
+  resolveGoalValue(profile.value.dailyCalories, fallbackNutritionGoals.calories),
+);
+
+const macroGoals = computed(() => ({
+  carbs: resolveGoalValue(
+    profile.value.macroTargets?.carbsG,
+    fallbackNutritionGoals.carbs,
+  ),
+  protein: resolveGoalValue(
+    profile.value.macroTargets?.proteinG,
+    fallbackNutritionGoals.protein,
+  ),
+  fat: resolveGoalValue(
+    profile.value.macroTargets?.fatG,
+    fallbackNutritionGoals.fat,
+  ),
+}));
+
 const mealsForSelectedDate = computed(() =>
   mealEntries.value.filter((meal) => meal.dateKey === selectedDateKey.value),
 );
@@ -944,25 +972,25 @@ const nutritionTotals = computed(() =>
 
 const isAnyGoalExceeded = computed(
   () =>
-    nutritionTotals.value.calories > calorieGoal ||
-    nutritionTotals.value.carbs > macroGoals.carbs ||
-    nutritionTotals.value.protein > macroGoals.protein ||
-    nutritionTotals.value.fat > macroGoals.fat,
+    nutritionTotals.value.calories > calorieGoal.value ||
+    nutritionTotals.value.carbs > macroGoals.value.carbs ||
+    nutritionTotals.value.protein > macroGoals.value.protein ||
+    nutritionTotals.value.fat > macroGoals.value.fat,
 );
 
 const calorieStatusNumber = computed(() => {
-  if (nutritionTotals.value.calories > calorieGoal) {
-    return nutritionTotals.value.calories - calorieGoal;
+  if (nutritionTotals.value.calories > calorieGoal.value) {
+    return nutritionTotals.value.calories - calorieGoal.value;
   }
-  return calorieGoal - nutritionTotals.value.calories;
+  return calorieGoal.value - nutritionTotals.value.calories;
 });
 
 const calorieStatusLabel = computed(() =>
-  nutritionTotals.value.calories > calorieGoal ? "OVER LIMIT" : "REMAINING",
+  nutritionTotals.value.calories > calorieGoal.value ? "OVER LIMIT" : "REMAINING",
 );
 
 const ringProgress = computed(() =>
-  Math.min(nutritionTotals.value.calories / calorieGoal, 1),
+  Math.min(nutritionTotals.value.calories / calorieGoal.value, 1),
 );
 
 const ringStyle = computed(() => ({
@@ -973,23 +1001,23 @@ const macroCards = computed(() => [
   {
     label: "Carbs",
     value: nutritionTotals.value.carbs,
-    goal: macroGoals.carbs,
+    goal: macroGoals.value.carbs,
     color: "#22c7e8",
-    exceeded: nutritionTotals.value.carbs > macroGoals.carbs,
+    exceeded: nutritionTotals.value.carbs > macroGoals.value.carbs,
   },
   {
     label: "Protein",
     value: nutritionTotals.value.protein,
-    goal: macroGoals.protein,
+    goal: macroGoals.value.protein,
     color: "#6aa7ff",
-    exceeded: nutritionTotals.value.protein > macroGoals.protein,
+    exceeded: nutritionTotals.value.protein > macroGoals.value.protein,
   },
   {
     label: "Fat",
     value: nutritionTotals.value.fat,
-    goal: macroGoals.fat,
+    goal: macroGoals.value.fat,
     color: "#ff6b6b",
-    exceeded: nutritionTotals.value.fat > macroGoals.fat,
+    exceeded: nutritionTotals.value.fat > macroGoals.value.fat,
   },
 ]);
 
@@ -1449,7 +1477,7 @@ onMounted(() => {
     }
 
     resetMealForm();
-    await Promise.all([fetchAvailableFoods(), fetchMealLogs()]);
+    await Promise.all([loadProfile(user.uid), fetchAvailableFoods(), fetchMealLogs()]);
   });
 });
 
@@ -1462,58 +1490,53 @@ onUnmounted(() => {
 .tracker-layout {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f6f8f7 0%, #f2f5f3 48%, #eef2ef 100%);
+  background: #f6f8fb;
 }
 
 .tracker-page {
   margin-left: 240px;
   width: calc(100% - 240px);
   min-height: 100vh;
-  padding: 32px 32px 40px;
+  padding: 36px 28px 56px;
 }
 
 .tracker-shell {
-  max-width: 1220px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
 .tracker-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 28px;
-  align-items: center;
-  padding: 24px 26px;
-  border: 1px solid rgba(216, 222, 230, 0.9);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 250, 0.96) 100%);
-  box-shadow: 0 14px 34px rgba(18, 31, 45, 0.05);
+  gap: 24px;
+  align-items: end;
 }
 
 .tracker-hero-copy {
-  max-width: 640px;
+  max-width: 680px;
 }
 
 .tracker-kicker {
   color: var(--brand-green-dark);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .tracker-title {
   margin-top: 10px;
-  color: #172535;
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.08;
+  color: var(--brand-text);
+  font-size: clamp(34px, 4vw, 42px);
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
 .tracker-description {
   margin-top: 12px;
-  color: #607082;
-  font-size: 15px;
+  color: var(--brand-text-muted);
+  font-size: 17px;
   line-height: 1.6;
 }
 
@@ -1524,8 +1547,8 @@ onUnmounted(() => {
 
 .tracker-toolbar-right {
   display: flex;
-  align-items: end;
-  gap: 12px;
+  align-items: flex-end;
+  gap: 14px;
   flex-wrap: wrap;
   justify-self: end;
 }
@@ -1535,21 +1558,20 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--brand-green-dark), var(--brand-green));
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
   color: #ffffff;
   padding: 14px 20px;
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  box-shadow: 0 10px 24px rgba(31, 159, 109, 0.18);
+  box-shadow: 0 14px 28px rgba(31, 159, 109, 0.18);
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .log-meal-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 26px rgba(31, 159, 109, 0.22);
+  box-shadow: 0 16px 30px rgba(31, 159, 109, 0.2);
 }
 
 .plus-icon {
@@ -1558,26 +1580,28 @@ onUnmounted(() => {
 }
 
 .today-shortcut {
-  border: 1px solid #d7e0e8;
-  background: rgba(255, 255, 255, 0.9);
-  color: #2c4058;
+  border: 1px solid #dce3eb;
+  background: #ffffff;
+  color: var(--brand-text);
   border-radius: 14px;
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 14px 20px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .today-shortcut:hover {
-  border-color: #bcd5c6;
+  transform: translateY(-1px);
   background: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
 }
 
 .today-shortcut.active {
   background: #eef8f2;
   border-color: rgba(56, 200, 143, 0.35);
   color: var(--brand-green-dark);
+  box-shadow: 0 10px 22px rgba(56, 200, 143, 0.1);
 }
 
 .jump-date-field {
@@ -1587,30 +1611,30 @@ onUnmounted(() => {
 }
 
 .jump-date-field span {
-  color: #697989;
-  font-size: 12px;
+  color: var(--brand-text-muted);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .jump-date-field input {
-  border: 1px solid #d7e0e8;
-  border-radius: 14px;
-  padding: 12px 14px;
+  border: 1px solid var(--brand-border);
+  border-radius: 16px;
+  padding: 15px 18px;
   font: inherit;
-  color: #16263c;
-  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-text);
+  background: #ffffff;
   min-width: 184px;
 }
 
 .date-strip-card {
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(218, 224, 232, 0.9);
-  border-radius: 24px;
-  box-shadow: 0 10px 26px rgba(18, 31, 45, 0.05);
-  padding: 18px 20px;
+  margin-top: 16px;
+  background: #ffffff;
+  border: 1px solid #e7edf3;
+  border-radius: 28px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.04);
+  padding: 20px 22px;
   display: grid;
   grid-template-columns: 48px 1fr 48px;
   align-items: center;
@@ -1683,45 +1707,45 @@ onUnmounted(() => {
 
 .selected-date-heading {
   text-align: center;
-  margin: 22px 0 28px;
+  margin: 24px 0 24px;
 }
 
 .selected-date-label {
-  color: #7a8796;
-  font-size: 12px;
+  color: var(--brand-text-muted);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .selected-date-heading h2 {
   margin-top: 8px;
-  color: #172535;
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1.12;
+  color: var(--brand-text);
+  font-size: clamp(32px, 4vw, 42px);
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
 .selected-date-heading p:last-child {
   margin-top: 8px;
-  color: #6f7d8d;
-  font-size: 16px;
+  color: var(--brand-text-muted);
+  font-size: 17px;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(350px, 0.96fr) minmax(420px, 1.08fr);
-  gap: 24px;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 22px;
   align-items: start;
 }
 
 .summary-card,
 .meals-card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(216, 222, 230, 0.92);
-  border-radius: 24px;
-  box-shadow: 0 16px 34px rgba(18, 31, 45, 0.06);
+  background: #ffffff;
+  border: 1px solid #e7edf3;
+  border-radius: 28px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.04);
 }
 
 .summary-card {
@@ -1740,23 +1764,23 @@ onUnmounted(() => {
 }
 
 .card-eyebrow {
-  color: #7a8796;
-  font-size: 12px;
+  color: var(--brand-text-muted);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .card-header h2 {
-  color: #172535;
-  font-size: 24px;
+  color: var(--brand-text);
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .card-support {
-  color: #687788;
-  font-size: 14px;
+  color: var(--brand-text-muted);
+  font-size: 15px;
 }
 
 .ring-wrap {
@@ -2504,9 +2528,9 @@ onUnmounted(() => {
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, var(--brand-green-dark), var(--brand-green));
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
   color: #ffffff;
-  box-shadow: 0 12px 22px rgba(31, 159, 109, 0.16);
+  box-shadow: 0 14px 28px rgba(31, 159, 109, 0.18);
 }
 
 .primary-btn:disabled {
@@ -2518,8 +2542,8 @@ onUnmounted(() => {
 
 .secondary-btn {
   background: #ffffff;
-  color: #25384f;
-  border: 1px solid #d7e0e8;
+  color: var(--brand-text);
+  border: 1px solid #dce3eb;
 }
 
 .meal-detail-panel {
