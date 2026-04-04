@@ -538,6 +538,7 @@ import {
   getDocs,
   serverTimestamp,
   updateDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import Sidebar from "../components/Sidebar.vue";
 import { auth, db } from "../firebase";
@@ -601,6 +602,7 @@ today.setHours(12, 0, 0, 0);
 const todayKey = toLocalDateKey(today);
 
 let unsubscribeAuth = null;
+let unsubscribeMealLogs = null;
 
 function cloneDate(date) {
   return new Date(date.getTime());
@@ -846,50 +848,68 @@ async function fetchAvailableFoods() {
   }
 }
 
-async function fetchMealLogs() {
-  if (!currentUser.value) return;
+function fetchMealLogs() {
+  if (!currentUser.value) {
+    console.warn("fetchMealLogs called but currentUser is null");
+    return () => {};
+  }
 
+  console.log("Setting up meal logs listener for user:", currentUser.value.uid);
   loadingMeals.value = true;
 
   try {
-    const snapshot = await getDocs(
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
       collection(db, "users", currentUser.value.uid, "mealLogs"),
+      (snapshot) => {
+        console.log("Meal logs listener triggered, doc count:", snapshot.docs.length);
+        
+        const meals = snapshot.docs.map((entryDoc) => {
+          const data = entryDoc.data();
+          console.log("Meal document:", { id: entryDoc.id, data });
+
+          return {
+            id: entryDoc.id,
+            userId: data.userId || currentUser.value.uid,
+            dateKey: data.dateKey || toLocalDateKey(today),
+            mealTime: data.mealTime || "Breakfast",
+            name: data.name || "Unnamed Meal",
+            source: data.source || "Saved Entry",
+            calories: normalizeNumber(data.calories),
+            protein: normalizeNumber(data.protein),
+            carbs: normalizeNumber(data.carbs),
+            fat: normalizeNumber(data.fat ?? data.fats),
+            servings: normalizeNumber(data.servings) || 1,
+            ingredients: normalizeIngredients(data.ingredients),
+            image: data.image || "",
+            restaurantDocId: data.restaurantDocId || "",
+            restaurantBusinessId: data.restaurantBusinessId || "",
+            menuItemId: data.menuItemId || "",
+            cuisineType: data.cuisineType || "",
+          };
+        });
+
+        meals.sort((a, b) => {
+          if (a.dateKey === b.dateKey) return a.mealTime.localeCompare(b.mealTime);
+          return b.dateKey.localeCompare(a.dateKey);
+        });
+
+        console.log("Updated mealEntries with", meals.length, "meals");
+        mealEntries.value = meals;
+        loadingMeals.value = false;
+      },
+      (error) => {
+        console.error("Error setting up meal logs listener:", error);
+        loadingMeals.value = false;
+      }
     );
 
-    const meals = snapshot.docs.map((entryDoc) => {
-      const data = entryDoc.data();
-
-      return {
-        id: entryDoc.id,
-        userId: data.userId || currentUser.value.uid,
-        dateKey: data.dateKey || toLocalDateKey(today),
-        mealTime: data.mealTime || "Breakfast",
-        name: data.name || "Unnamed Meal",
-        source: data.source || "Saved Entry",
-        calories: normalizeNumber(data.calories),
-        protein: normalizeNumber(data.protein),
-        carbs: normalizeNumber(data.carbs),
-        fat: normalizeNumber(data.fat ?? data.fats),
-        servings: normalizeNumber(data.servings) || 1,
-        ingredients: normalizeIngredients(data.ingredients),
-        image: data.image || "",
-        restaurantDocId: data.restaurantDocId || "",
-        restaurantBusinessId: data.restaurantBusinessId || "",
-        menuItemId: data.menuItemId || "",
-        cuisineType: data.cuisineType || "",
-      };
-    });
-
-    meals.sort((a, b) => {
-      if (a.dateKey === b.dateKey) return a.mealTime.localeCompare(b.mealTime);
-      return b.dateKey.localeCompare(a.dateKey);
-    });
-
-    mealEntries.value = meals;
+    console.log("Listener setup complete, returning unsubscribe function");
+    return unsubscribe;
   } catch (error) {
     console.error("Error fetching meal logs:", error);
-  } finally {
     loadingMeals.value = false;
+    return () => {};
   }
 }
 
@@ -1394,7 +1414,7 @@ async function saveMeal() {
       );
     }
 
-    await fetchMealLogs();
+    // Listener will automatically update mealEntries
     closeMealModal();
   } catch (error) {
     console.error("Error saving meal:", error);
@@ -1438,7 +1458,7 @@ async function logMealAgain(meal) {
     );
 
     openMealMenuId.value = null;
-    await fetchMealLogs();
+    // Listener will automatically update mealEntries
   } catch (error) {
     console.error("Error logging meal again:", error);
     window.alert("Unable to log this meal again.");
@@ -1459,7 +1479,7 @@ async function deleteMeal(mealId) {
     }
 
     openMealMenuId.value = null;
-    await fetchMealLogs();
+    // Listener will automatically update mealEntries
   } catch (error) {
     console.error("Error deleting meal:", error);
     window.alert("Unable to delete meal entry.");
@@ -1473,16 +1493,19 @@ onMounted(() => {
     if (!user) {
       mealEntries.value = [];
       availableFoods.value = [];
+      if (unsubscribeMealLogs) unsubscribeMealLogs();
       return;
     }
 
     resetMealForm();
-    await Promise.all([loadProfile(user.uid), fetchAvailableFoods(), fetchMealLogs()]);
+    await Promise.all([loadProfile(user.uid), fetchAvailableFoods()]);
+    unsubscribeMealLogs = fetchMealLogs();
   });
 });
 
 onUnmounted(() => {
   if (unsubscribeAuth) unsubscribeAuth();
+  if (unsubscribeMealLogs) unsubscribeMealLogs();
 });
 </script>
 
