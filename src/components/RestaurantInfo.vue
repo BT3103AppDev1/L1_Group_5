@@ -1,35 +1,34 @@
 <template>
-  <div class="restaurant-info">
-    <button class="back-btn">← Back to Map</button>
-    
-    <h1 class="restaurant-name">Clarke Quay Grill</h1>
-    <p class="restaurant-location">Clarke Quay • Clarke Quay MRT</p>
-    
-    <p class="restaurant-description">
-      Premium grilled meats and steaks with exquisite marinades. Perfect for serious protein intake.
-    </p>
+  <div class="restaurant-info" v-if="restaurant">
+    <div class="info-content">
+      <div class="info-text">
+        <h1 class="restaurant-name">{{ restaurant.business_name }}</h1>
+        <p class="restaurant-location">
+          {{ restaurant.blk_house }} {{ restaurant.street_name }}, #{{ restaurant.unit_no }} {{ restaurant.postcode }}
+        </p>
+        <p class="restaurant-score" v-if="restaurant.score">
+          Score: {{ restaurant.score }}
+        </p>
+      </div>
+      <div v-if="restaurant.mainImage" class="info-image">
+        <img :src="restaurant.mainImage" :alt="restaurant.business_name" class="restaurant-image" />
+      </div>
+    </div>
+  </div>
+  <div v-else class="restaurant-info-empty">
+    <p>Select a restaurant to view details.</p>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'RestaurantInfo',
-  data() {
-    return {
-      restaurant: {
-        name: 'Clarke Quay Grill',
-        location: 'Clarke Quay • Clarke Quay MRT',
-        description: 'Premium grilled meats and steaks with exquisite marinades. Perfect for serious protein intake.',
-        cuisine: 'Grilled Meat & Steaks'
-      }
-    }
-  },
-  methods: {
-    goBack() {
-      // Navigate back to map
-    }
+<script setup>
+import { defineProps, toRefs } from 'vue';
+const props = defineProps({
+  restaurant: {
+    type: Object,
+    default: null
   }
-}
+});
+const { restaurant } = toRefs(props);
 </script>
 
 <style scoped>
@@ -38,18 +37,42 @@ export default {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.info-content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.info-text {
+  flex: 1;
+}
+
+.info-image {
+  flex-shrink: 0;
+}
+
+.restaurant-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .back-btn {
   background: none;
   border: none;
   color: #999;
   font-size: 14px;
   cursor: pointer;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding: 0;
-  
-  &:hover {
-    color: #333;
-  }
+  width: 100%;
+  text-align: left;
+}
+
+.back-btn:hover {
+  color: #333;
 }
 
 .restaurant-name {
@@ -70,5 +93,12 @@ export default {
   color: #666;
   line-height: 1.4;
   margin: 0;
+}
+
+.restaurant-score {
+  font-size: 14px;
+  color: #666;
+  margin: 12px 0 0 0;
+  font-weight: 600;
 }
 </style>
