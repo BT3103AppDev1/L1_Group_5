@@ -226,24 +226,6 @@ const showSuggestions = ref(false);
 const suggestions = ref({ cuisines: [], restaurants: [] });
 const searchResults = ref([]); // Holds data for the left panel
 
-// Filter State
-// const options = computed(() => {
-//   // 1. Extract every single cuisine from every restaurant into one giant array
-//   const allCuisines = safeRestaurants.value.flatMap((r) => r.cuisineTypes);
-
-//   // 2. Put them in a Set (which automatically deletes duplicates), then sort alphabetically
-//   const uniqueCuisines = [...new Set(allCuisines)].sort();
-
-//   // 3. Do the exact same thing for dietary preferences
-//   const allDietary = safeRestaurants.value.flatMap((r) => r.dietary);
-//   const uniqueDietary = [...new Set(allDietary)].sort();
-
-//   return {
-//     cuisines: uniqueCuisines,
-//     dietary: uniqueDietary,
-//   };
-// });
-
 const defaultFilters = {
   searchMode: null, // 'restaurant' or 'cuisine'
   specificRestaurantId: null,
@@ -274,75 +256,6 @@ const noResultsMessage = computed(() => {
 
 const stagedFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 const activeFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
-
-// const safeRestaurants = computed(() => {
-//   return restaurants.value
-//     .map((r) => {
-//       // Safely average calories from the menuItems array
-//       let avgCalories = 0;
-//       if (r.menuItems && r.menuItems.length > 0) {
-//         const totalCals = r.menuItems.reduce(
-//           (sum, item) => sum + (item.calories || 0),
-//           0,
-//         );
-//         avgCalories = Math.round(totalCals / r.menuItems.length);
-//       }
-
-//       return {
-//         id: r.id,
-//         name: r.business_name || "Unknown Restaurant",
-//         lat: r.latitude,
-//         lng: r.longitude,
-//         cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
-
-//         // --- UPDATED SAFEGUARD HERE ---
-//         dietary: String(r.dietaryPreferences || "")
-//           .split(",")
-//           .map((d) => d.trim())
-//           .filter(Boolean),
-//         // ------------------------------
-
-//         calories: avgCalories,
-//       };
-//     })
-//     .filter((r) => r.lat !== undefined && r.lng !== undefined); // Prevents map crashes!
-// });
-
-// src/components/Map.vue
-
-// --- DATA FORMATTER: Automatically maps Firebase fields to the format your map UI expects
-// const safeRestaurants = computed(() => {
-//   return restaurants.value
-//     .map((r) => {
-//       // Calculate Average Protein per Dollar ($P/$)
-//       let pPerDollar = 0;
-//       if (r.menuItems && r.menuItems.length > 0) {
-//         const ratios = r.menuItems.map(item => {
-//           const protein = Number(item.protein) || 0;
-//           const price = Number(item.price) || 1;
-//           return protein / price;
-//         });
-//         pPerDollar = ratios.reduce((a, b) => a + b, 0) / ratios.length;
-//       }
-
-//       // Assign Tier based on the ratio
-//       let tier = 'Standard';
-//       if (pPerDollar > 10) tier = 'Elite';
-//       else if (pPerDollar > 5) tier = 'High';
-
-//       return {
-//         id: r.id,
-//         name: r.business_name || "Unknown Restaurant",
-//         lat: r.latitude,
-//         lng: r.longitude,
-//         cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
-//         dietary: String(r.dietaryPreferences || "").split(",").map(d => d.trim()).filter(Boolean),
-//         proteinPerDollar: pPerDollar, // Used for display in RestaurantInfo
-//         pTier: tier // Used for the filter logic above
-//       };
-//     })
-//     .filter((r) => r.lat !== undefined && r.lng !== undefined);
-// });
 
 // --- MAP INITIALIZATION ---
 const SG_BOUNDS = L.latLngBounds(
@@ -417,30 +330,6 @@ const handleSearch = () => {
 
   showSuggestions.value = true;
 };
-// const handleSearch = () => {
-//   const query = searchQuery.value.toLowerCase().trim();
-
-//   // AC 9.1.2: Require minimum characters
-//   if (query.length < 3) {
-//     showSuggestions.value = false;
-//     return;
-//   }
-
-//   // Find matching restaurants
-//   suggestions.value.restaurants = dummyRestaurants.filter((r) =>
-//     r.name.toLowerCase().includes(query),
-//   );
-
-//   // Find matching cuisines
-//   const allCuisines = [
-//     ...new Set(dummyRestaurants.flatMap((r) => r.cuisineTypes)),
-//   ];
-//   suggestions.value.cuisines = allCuisines.filter((c) =>
-//     c.toLowerCase().includes(query),
-//   );
-
-//   showSuggestions.value = true;
-// };
 
 const selectRestaurant = (restaurant) => {
   searchQuery.value = restaurant.name;

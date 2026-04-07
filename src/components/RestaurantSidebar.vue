@@ -20,7 +20,6 @@ const props = defineProps({
   }
 });
 
-
 const restaurant = ref(null);
 const menuItems = ref([]);
 const { normalizedRestaurants } = useRestaurantFilterOptions();
@@ -59,40 +58,6 @@ async function fetchRestaurantAndMenu(id) {
     menuItems.value = [];
   }
 }
-
-// async function fetchRestaurantAndMenu(id) {
-//   if (!id) {
-//     restaurant.value = null;
-//     menuItems.value = [];
-//     return;
-//   }
-//   try {
-//     // Fetch restaurant document
-//     const restDoc = await getDoc(doc(db, 'newRestaurants', id));
-//     if (restDoc.exists()) {
-//       restaurant.value = { id: restDoc.id, ...restDoc.data() };
-      
-//       // Check if menuItems is a top-level array field in the document
-//       if (restaurant.value.menuItems && Array.isArray(restaurant.value.menuItems)) {
-//         console.log('[Sidebar] MenuItems found as array field in document');
-//         menuItems.value = restaurant.value.menuItems;
-//       } else {
-//         // Otherwise try to fetch from subcollection
-//         console.log('[Sidebar] Attempting to fetch menuItems from subcollection');
-//         const menuSnapshot = await getDocs(collection(db, 'newRestaurants', id, 'menuItems'));
-//         menuItems.value = menuSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-//       }
-//     } else {
-//       restaurant.value = null;
-//       menuItems.value = [];
-//       console.log('[Sidebar] Restaurant document not found');
-//     }
-//   } catch (error) {
-//     console.error('[Sidebar] Error fetching restaurant/menu:', error);
-//     restaurant.value = null;
-//     menuItems.value = [];
-//   }
-// }
 
 watch(() => props.restaurantId, (newId) => {
   console.log('[Sidebar] Received restaurantId:', newId);
