@@ -344,6 +344,8 @@ const selectRestaurant = (restaurant) => {
 
   // Zoom in on the specific restaurant
   map.value.setView([restaurant.lat, restaurant.lng], 16);
+
+  goToRestaurant(restaurant.id);
 };
 
 const selectCuisine = (cuisine) => {

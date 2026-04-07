@@ -49,6 +49,7 @@ const { restaurant } = toRefs(props);
 }
 
 .info-image {
+  margin-top: 30px;
   flex-shrink: 0;
 }
 
