@@ -18,6 +18,24 @@ const normalizeStringArray = (value) => {
   return [];
 };
 
+const getProteinPerDollar = (menuItems) => {
+  if (!Array.isArray(menuItems) || menuItems.length === 0) return 0;
+
+  const ratios = menuItems
+    .map(item => {
+      const protein = Number(item?.protein) || 0;
+      const price = Number(item?.price) || 1; // Avoid division by zero
+      return protein / price;
+    })
+    .filter(ratio => ratio > 0);
+
+  if (ratios.length === 0) return 0;
+  
+  // Return the average P/$ ratio for the restaurant
+  const totalRatio = ratios.reduce((sum, r) => sum + r, 0);
+  return totalRatio / ratios.length;
+};
+
 const normalizeCuisineTypes = (restaurant) => {
   if (Array.isArray(restaurant.cuisineTypes)) {
     return normalizeStringArray(restaurant.cuisineTypes);
@@ -47,18 +65,26 @@ const getAverageCalories = (menuItems) => {
   return Math.round(totalCalories / menuItems.length);
 };
 
-const normalizeRestaurant = (restaurant) => ({
-  id: restaurant.id,
-  name:
-    restaurant.business_name ||
-    restaurant.name ||
-    "Unknown Restaurant",
-  lat: restaurant.latitude ?? restaurant.location?.lat ?? null,
-  lng: restaurant.longitude ?? restaurant.location?.lng ?? null,
-  cuisineTypes: normalizeCuisineTypes(restaurant),
-  dietary: normalizeDietaryPreferences(restaurant),
-  calories: getAverageCalories(restaurant.menuItems),
-});
+const normalizeRestaurant = (restaurant) => {
+  // 1. Perform your calculations first
+  const pPerDollar = getProteinPerDollar(restaurant.menuItems);
+
+  // 2. Explicitly return the object
+  return {
+    id: restaurant.id,
+    name:
+      restaurant.business_name ||
+      restaurant.name ||
+      "Unknown Restaurant",
+    lat: restaurant.latitude ?? restaurant.location?.lat ?? null,
+    lng: restaurant.longitude ?? restaurant.location?.lng ?? null,
+    cuisineTypes: normalizeCuisineTypes(restaurant),
+    proteinPerDollar: pPerDollar,
+    pTier: pPerDollar > 10 ? 'Elite' : pPerDollar > 5 ? 'High' : 'Standard',
+    dietary: normalizeDietaryPreferences(restaurant),
+    calories: getAverageCalories(restaurant.menuItems),
+  };
+};
 
 const buildUniqueOptions = (restaurants) => {
   const cuisines = [...new Set(restaurants.flatMap((r) => r.cuisineTypes))].sort();

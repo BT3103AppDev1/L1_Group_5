@@ -91,13 +91,16 @@
     </div>
 
     <div
-      v-if="activeFilters.cuisines.length > 0 && searchResults.length > 0"
+      v-if="activeFilters.cuisines.length > 0 || activeFilters.dietary.length > 0"
       class="results-overlay"
     >
-      <h3>
-        {{ searchResults.length }} Results for "{{ activeFilters.cuisines[0] }}"
+      <button class="close-results-btn" @click="clearSearch" aria-label="Close results">✕</button>
+      <h3 v-if="searchResults.length > 0">
+        {{ searchResults.length }} 
+        {{ activeFilters.cuisines.length === 1 ? `Results for "${activeFilters.cuisines[0]}"` : 'results found' }}
       </h3>
-      <div class="results-list">
+
+      <div v-if="searchResults.length > 0" class="results-list">
         <div
           v-for="res in searchResults"
           :key="'card-' + res.id"
@@ -110,6 +113,9 @@
             {{ res.cuisineTypes.join(", ") }} • {{ res.calories }} kcal
           </p>
         </div>
+      </div>
+      <div v-else class="no-results-state">
+        <p>{{ noResultsMessage }}</p>
       </div>
     </div>
 
@@ -149,7 +155,8 @@
             </button>
           </div>
         </div>
-        <div class="filter-group">
+
+        <!-- <div class="filter-group">
           <label>Dietary Preferences</label>
           <div class="pill-grid">
             <button
@@ -160,6 +167,25 @@
               @click="toggleFilter('dietary', diet)"
             >
               {{ diet }}
+            </button>
+          </div>
+        </div> -->
+        <div class="filter-group">
+          <label>Protein Value ($P/\$ $)</label>
+          <div class="pill-grid">
+            <button 
+              class="pill-btn" 
+              :class="{ active: stagedFilters.proteinValue.includes('Elite') }"
+              @click="toggleFilter('proteinValue', 'Elite')"
+            >
+              Elite (>10g/$)
+            </button>
+            <button 
+              class="pill-btn" 
+              :class="{ active: stagedFilters.proteinValue.includes('High') }"
+              @click="toggleFilter('proteinValue', 'High')"
+            >
+              High (>5g/$)
             </button>
           </div>
         </div>
@@ -221,25 +247,86 @@ const defaultFilters = {
   specificRestaurantId: null,
   cuisines: [],
   dietary: [],
+  proteinValue: [],
 };
+
+const noResultsMessage = computed(() => {
+  const cuisineList = activeFilters.value.cuisines.map(c => `'${c}'`).join(', ');
+  const dietaryList = activeFilters.value.dietary.map(d => `'${d}'`).join(', ');
+  
+  let msg = "No results found";
+  
+  if (cuisineList || dietaryList) {
+    msg += " for ";
+    if (cuisineList && dietaryList) {
+      msg += `${cuisineList} and ${dietaryList} dietary preference`;
+    } else if (cuisineList) {
+      msg += cuisineList;
+    } else {
+      msg += `${dietaryList} dietary preference`;
+    }
+  }
+  
+  return msg + ".";
+});
 
 const stagedFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 const activeFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 
-// --- DATA FORMATTER ---
-// Automatically maps Firebase fields to the format your map UI expects
+// const safeRestaurants = computed(() => {
+//   return restaurants.value
+//     .map((r) => {
+//       // Safely average calories from the menuItems array
+//       let avgCalories = 0;
+//       if (r.menuItems && r.menuItems.length > 0) {
+//         const totalCals = r.menuItems.reduce(
+//           (sum, item) => sum + (item.calories || 0),
+//           0,
+//         );
+//         avgCalories = Math.round(totalCals / r.menuItems.length);
+//       }
+
+//       return {
+//         id: r.id,
+//         name: r.business_name || "Unknown Restaurant",
+//         lat: r.latitude,
+//         lng: r.longitude,
+//         cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
+
+//         // --- UPDATED SAFEGUARD HERE ---
+//         dietary: String(r.dietaryPreferences || "")
+//           .split(",")
+//           .map((d) => d.trim())
+//           .filter(Boolean),
+//         // ------------------------------
+
+//         calories: avgCalories,
+//       };
+//     })
+//     .filter((r) => r.lat !== undefined && r.lng !== undefined); // Prevents map crashes!
+// });
+
+// src/components/Map.vue
+
+// --- DATA FORMATTER: Automatically maps Firebase fields to the format your map UI expects
 const safeRestaurants = computed(() => {
   return restaurants.value
     .map((r) => {
-      // Safely average calories from the menuItems array
-      let avgCalories = 0;
+      // Calculate Average Protein per Dollar ($P/$)
+      let pPerDollar = 0;
       if (r.menuItems && r.menuItems.length > 0) {
-        const totalCals = r.menuItems.reduce(
-          (sum, item) => sum + (item.calories || 0),
-          0,
-        );
-        avgCalories = Math.round(totalCals / r.menuItems.length);
+        const ratios = r.menuItems.map(item => {
+          const protein = Number(item.protein) || 0;
+          const price = Number(item.price) || 1;
+          return protein / price;
+        });
+        pPerDollar = ratios.reduce((a, b) => a + b, 0) / ratios.length;
       }
+
+      // Assign Tier based on the ratio
+      let tier = 'Standard';
+      if (pPerDollar > 10) tier = 'Elite';
+      else if (pPerDollar > 5) tier = 'High';
 
       return {
         id: r.id,
@@ -247,18 +334,12 @@ const safeRestaurants = computed(() => {
         lat: r.latitude,
         lng: r.longitude,
         cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
-
-        // --- UPDATED SAFEGUARD HERE ---
-        dietary: String(r.dietaryPreferences || "")
-          .split(",")
-          .map((d) => d.trim())
-          .filter(Boolean),
-        // ------------------------------
-
-        calories: avgCalories,
+        dietary: String(r.dietaryPreferences || "").split(",").map(d => d.trim()).filter(Boolean),
+        proteinPerDollar: pPerDollar, // Used for display in RestaurantInfo
+        pTier: tier // Used for the filter logic above
       };
     })
-    .filter((r) => r.lat !== undefined && r.lng !== undefined); // Prevents map crashes!
+    .filter((r) => r.lat !== undefined && r.lng !== undefined);
 });
 
 // --- MAP INITIALIZATION ---
@@ -414,10 +495,20 @@ const clearAll = () => {
 };
 
 const applyFilters = () => {
+  // Sync staged filters to active filters
   activeFilters.value = JSON.parse(JSON.stringify(stagedFilters.value));
-  //activeFilters.value.searchMode = null; // Clear strict search mode if using side panel
+  
+  // Run the filtering logic to update searchResults
   updateMapMarkers();
-  isFilterOpen.value = false;
+
+  // Only close the pane if at least one restaurant is found
+  if (searchResults.value.length > 0) {
+    isFilterOpen.value = false;
+  } else {
+    // Optional: You could add a console log or a local state 
+    // to show an error message specifically inside the pane.
+    console.log("No results found, keeping filter pane open.");
+  }
 };
 
 const updateMapMarkers = () => {
@@ -448,6 +539,14 @@ const updateMapMarkers = () => {
       !f.dietary.every((d) => r.dietary.includes(d))
     ) {
       return false;
+    }
+
+    // Filter by Protein Tier
+    if (f.proteinValue && f.proteinValue.length > 0) {
+      // Check if the restaurant's tier is one of the ones the user selected
+      if (!f.proteinValue.includes(r.pTier)) {
+        return false;
+      }
     }
 
     return true;
@@ -607,7 +706,7 @@ const goToRestaurant = (id) => {
   font-size: 14px;
 }
 
-/* LEFT SIDE RESULTS OVERLAY (AC 9.2.4) */
+/* LEFT SIDE RESULTS OVERLAY*/
 .results-overlay {
   position: absolute;
   top: 80px;
@@ -620,11 +719,37 @@ const goToRestaurant = (id) => {
   padding: 16px;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  padding: 10px 16px 16px;
+  
 }
 
 .results-overlay h3 {
   margin: 0 0 16px 0;
   font-size: 16px;
+  color: #1a1a1a;
+}
+.close-results-btn { /*close button for the left results overlay*/
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  z-index: 1010;
+}
+
+.close-results-btn:hover {
+  background: #f0f0f0;
   color: #1a1a1a;
 }
 
@@ -772,5 +897,17 @@ const goToRestaurant = (id) => {
   background: #4db97f;
   border: none;
   color: white;
+}
+
+.no-results-state { /* Add to <style scoped> in Map.vue */
+  padding: 20px 0;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.no-results-state p {
+  margin: 0;
 }
 </style>

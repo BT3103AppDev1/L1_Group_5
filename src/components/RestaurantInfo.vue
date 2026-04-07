@@ -4,7 +4,10 @@
       <div class="info-text">
         <h1 class="restaurant-name">{{ restaurant.business_name }}</h1>
         <p class="restaurant-location">
-          {{ restaurant.blk_house }} {{ restaurant.street_name }}, #{{ restaurant.unit_no }} {{ restaurant.postcode }}
+          {{ restaurant.blk_house }} {{ restaurant.street_name }}, 
+          #{{ restaurant.unit_no || '01-01' }}
+          <br /> 
+          Singapore {{ restaurant.postcode }}
         </p>
         <p class="restaurant-score" v-if="restaurant.score">
           Score: {{ restaurant.score }}
