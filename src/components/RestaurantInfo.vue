@@ -4,12 +4,17 @@
       <div class="info-text">
         <h1 class="restaurant-name">{{ restaurant.business_name }}</h1>
         <p class="restaurant-location">
-          {{ restaurant.blk_house }} {{ restaurant.street_name }}, #{{ restaurant.unit_no }} {{ restaurant.postcode }}
+          {{ restaurant.blk_house }} {{ restaurant.street_name }}, 
+          #{{ restaurant.unit_no || '01-01' }}
+          <br /> 
+          Singapore {{ restaurant.postcode }}
         </p>
-        <p class="restaurant-score" v-if="restaurant.score">
-          Score: {{ restaurant.score }}
-        </p>
+
+          <p class="protein-metric" v-if="restaurant.proteinPerDollar > 0">
+            <strong>Avg Protein Value:</strong> {{ restaurant.proteinPerDollar.toFixed(1) }}g / $
+          </p>
       </div>
+      
       <div v-if="restaurant.mainImage" class="info-image">
         <img :src="restaurant.mainImage" :alt="restaurant.business_name" class="restaurant-image" />
       </div>
@@ -43,11 +48,8 @@ const { restaurant } = toRefs(props);
   align-items: flex-start;
 }
 
-.info-text {
-  flex: 1;
-}
-
 .info-image {
+  margin-top: 30px;
   flex-shrink: 0;
 }
 
@@ -95,10 +97,13 @@ const { restaurant } = toRefs(props);
   margin: 0;
 }
 
-.restaurant-score {
+.protein-metric {
   font-size: 14px;
-  color: #666;
+  color: #2b7a51; 
+  background: #edf8f0;
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
   margin: 12px 0 0 0;
-  font-weight: 600;
 }
 </style>

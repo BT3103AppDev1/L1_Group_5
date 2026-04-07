@@ -59,15 +59,6 @@ const logout = async () => {
           <User class="icon" />
           <span>Profile</span>
         </button>
-
-        <button
-          @click="go('/test')"
-          class="nav-item"
-          :class="{ active: route.path === '/test' }"
-        >
-          <span class="icon">🔍</span>
-          <span>Data Test</span>
-        </button>
       </nav>
     </div>
 

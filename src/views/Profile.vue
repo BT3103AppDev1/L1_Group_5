@@ -543,7 +543,7 @@ onMounted(async () => {
               </div>
               <div>
                 <h2>Preferences</h2>
-                <p>Select your preferred cuisines and dietary filters from the same options used on the map.</p>
+                <p>Select your default cuisines and dietary filters from the same options used on the map.</p>
               </div>
             </div>
 
