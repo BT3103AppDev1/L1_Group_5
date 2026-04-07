@@ -235,10 +235,6 @@ const applyDerivedMetrics = () => {
   return calculateDerivedMetrics(draft.value);
 };
 
-const resetToCurrentProfile = () => {
-  draft.value = cloneProfile(profile.value);
-};
-
 const loadProfile = async (uid) => {
   if (!uid) {
     profile.value = createDefaultProfile();
