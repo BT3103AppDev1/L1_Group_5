@@ -156,7 +156,7 @@
           </div>
         </div>
 
-        <!-- <div class="filter-group">
+        <div class="filter-group">
           <label>Dietary Preferences</label>
           <div class="pill-grid">
             <button
@@ -169,23 +169,24 @@
               {{ diet }}
             </button>
           </div>
-        </div> -->
+        </div>
+
         <div class="filter-group">
-          <label>Protein Value ($P/\$ $)</label>
+          <label>Average Protein Per $</label>
           <div class="pill-grid">
             <button 
               class="pill-btn" 
               :class="{ active: stagedFilters.proteinValue.includes('Elite') }"
               @click="toggleFilter('proteinValue', 'Elite')"
             >
-              Elite (>10g/$)
+              Elite (>3g/$)
             </button>
             <button 
               class="pill-btn" 
               :class="{ active: stagedFilters.proteinValue.includes('High') }"
               @click="toggleFilter('proteinValue', 'High')"
             >
-              High (>5g/$)
+              High (>1.5g/$)
             </button>
           </div>
         </div>
@@ -206,9 +207,10 @@ import { onMounted, onUnmounted, ref, computed } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Fuse from "fuse.js";
-import { useRestaurants } from "../composables/useRestaurants";
+//import { useRestaurants } from "../composables/useRestaurants";
+import { useRestaurantFilterOptions } from "../composables/useRestaurantFilterOptions";
 
-const { restaurants, loading, fetchAll } = useRestaurants(); // This is your "database variable"
+const {mappableRestaurants: safeRestaurants, options, fetchAll } = useRestaurantFilterOptions();
 
 // --- EMITS (For routing to Restaurant Info Page) ---
 const emit = defineEmits(["view-details"]);
@@ -225,22 +227,22 @@ const suggestions = ref({ cuisines: [], restaurants: [] });
 const searchResults = ref([]); // Holds data for the left panel
 
 // Filter State
-const options = computed(() => {
-  // 1. Extract every single cuisine from every restaurant into one giant array
-  const allCuisines = safeRestaurants.value.flatMap((r) => r.cuisineTypes);
+// const options = computed(() => {
+//   // 1. Extract every single cuisine from every restaurant into one giant array
+//   const allCuisines = safeRestaurants.value.flatMap((r) => r.cuisineTypes);
 
-  // 2. Put them in a Set (which automatically deletes duplicates), then sort alphabetically
-  const uniqueCuisines = [...new Set(allCuisines)].sort();
+//   // 2. Put them in a Set (which automatically deletes duplicates), then sort alphabetically
+//   const uniqueCuisines = [...new Set(allCuisines)].sort();
 
-  // 3. Do the exact same thing for dietary preferences
-  const allDietary = safeRestaurants.value.flatMap((r) => r.dietary);
-  const uniqueDietary = [...new Set(allDietary)].sort();
+//   // 3. Do the exact same thing for dietary preferences
+//   const allDietary = safeRestaurants.value.flatMap((r) => r.dietary);
+//   const uniqueDietary = [...new Set(allDietary)].sort();
 
-  return {
-    cuisines: uniqueCuisines,
-    dietary: uniqueDietary,
-  };
-});
+//   return {
+//     cuisines: uniqueCuisines,
+//     dietary: uniqueDietary,
+//   };
+// });
 
 const defaultFilters = {
   searchMode: null, // 'restaurant' or 'cuisine'
@@ -309,38 +311,38 @@ const activeFilters = ref(JSON.parse(JSON.stringify(defaultFilters)));
 // src/components/Map.vue
 
 // --- DATA FORMATTER: Automatically maps Firebase fields to the format your map UI expects
-const safeRestaurants = computed(() => {
-  return restaurants.value
-    .map((r) => {
-      // Calculate Average Protein per Dollar ($P/$)
-      let pPerDollar = 0;
-      if (r.menuItems && r.menuItems.length > 0) {
-        const ratios = r.menuItems.map(item => {
-          const protein = Number(item.protein) || 0;
-          const price = Number(item.price) || 1;
-          return protein / price;
-        });
-        pPerDollar = ratios.reduce((a, b) => a + b, 0) / ratios.length;
-      }
+// const safeRestaurants = computed(() => {
+//   return restaurants.value
+//     .map((r) => {
+//       // Calculate Average Protein per Dollar ($P/$)
+//       let pPerDollar = 0;
+//       if (r.menuItems && r.menuItems.length > 0) {
+//         const ratios = r.menuItems.map(item => {
+//           const protein = Number(item.protein) || 0;
+//           const price = Number(item.price) || 1;
+//           return protein / price;
+//         });
+//         pPerDollar = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+//       }
 
-      // Assign Tier based on the ratio
-      let tier = 'Standard';
-      if (pPerDollar > 10) tier = 'Elite';
-      else if (pPerDollar > 5) tier = 'High';
+//       // Assign Tier based on the ratio
+//       let tier = 'Standard';
+//       if (pPerDollar > 10) tier = 'Elite';
+//       else if (pPerDollar > 5) tier = 'High';
 
-      return {
-        id: r.id,
-        name: r.business_name || "Unknown Restaurant",
-        lat: r.latitude,
-        lng: r.longitude,
-        cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
-        dietary: String(r.dietaryPreferences || "").split(",").map(d => d.trim()).filter(Boolean),
-        proteinPerDollar: pPerDollar, // Used for display in RestaurantInfo
-        pTier: tier // Used for the filter logic above
-      };
-    })
-    .filter((r) => r.lat !== undefined && r.lng !== undefined);
-});
+//       return {
+//         id: r.id,
+//         name: r.business_name || "Unknown Restaurant",
+//         lat: r.latitude,
+//         lng: r.longitude,
+//         cuisineTypes: r.cuisineType ? [r.cuisineType] : [],
+//         dietary: String(r.dietaryPreferences || "").split(",").map(d => d.trim()).filter(Boolean),
+//         proteinPerDollar: pPerDollar, // Used for display in RestaurantInfo
+//         pTier: tier // Used for the filter logic above
+//       };
+//     })
+//     .filter((r) => r.lat !== undefined && r.lng !== undefined);
+// });
 
 // --- MAP INITIALIZATION ---
 const SG_BOUNDS = L.latLngBounds(

@@ -80,7 +80,7 @@ const normalizeRestaurant = (restaurant) => {
     lng: restaurant.longitude ?? restaurant.location?.lng ?? null,
     cuisineTypes: normalizeCuisineTypes(restaurant),
     proteinPerDollar: pPerDollar,
-    pTier: pPerDollar > 10 ? 'Elite' : pPerDollar > 5 ? 'High' : 'Standard',
+    pTier: pPerDollar > 3 ? 'Elite' : pPerDollar > 1.5 ? 'High' : 'Standard',
     dietary: normalizeDietaryPreferences(restaurant),
     calories: getAverageCalories(restaurant.menuItems),
   };

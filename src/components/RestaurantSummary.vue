@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div class="summary-backdrop" @click.self="onClose">
     <div class="summary-card">
       <img v-if="restaurant.image" :src="restaurant.image" alt="Restaurant image" class="summary-image" />
@@ -89,4 +89,4 @@ export default {
 .summary-btn:hover {
   background: #28a745;
 }
-</style>
+</style> -->
