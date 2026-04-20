@@ -7,6 +7,7 @@ import Dashboard from "../views/Dashboard.vue";
 import ForgotPassword from "../views/ForgotPassword.vue";
 import Tracker from "../views/Tracker.vue";
 import Profile from "../views/Profile.vue";
+import About from "../views/About.vue";
 // import DataTest from "../views/dataTest.vue";
 
 import { auth } from "../firebase";
@@ -48,6 +49,11 @@ const routes = [
     name: "Profile",
     component: Profile,
   },
+  {
+    path: "/about",
+    name: "About",
+    component: About,
+  },
 ];
 
 const router = createRouter({
@@ -59,7 +65,7 @@ router.beforeEach(async (to, from, next) => {
   await waitForAuthReady();
 
   const user = auth.currentUser;
-  const requiresAuth = ["/dashboard", "/tracker", "/profile"];
+  const requiresAuth = ["/dashboard", "/tracker", "/profile", "/about"];
 
   if (requiresAuth.includes(to.path) && !user) {
     next("/");

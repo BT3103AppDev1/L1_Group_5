@@ -1,0 +1,6 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Smiley face">
+  <circle cx="110" cy="110" r="105" fill="#FFD93D" stroke="#222" stroke-width="8"/>
+  <circle cx="75" cy="85" r="12" fill="#222"/>
+  <circle cx="145" cy="85" r="12" fill="#222"/>
+  <path d="M65 135 C80 165, 140 165, 155 135" fill="none" stroke="#222" stroke-width="10" stroke-linecap="round"/>
+</svg>

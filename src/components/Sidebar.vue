@@ -65,9 +65,7 @@ const logout = async () => {
     <!-- BOTTOM -->
     <div class="footer">
       <div class="links">
-        <p>About</p>
-        <p>Nutrition Resources</p>
-        <p>Terms & Privacy</p>
+        <p @click="go('/about')" :class="{ active: route.path === '/about' }">About</p>
       </div>
 
       <!-- LOGOUT -->
@@ -187,6 +185,11 @@ const logout = async () => {
 
 .links p:hover {
   color: #4db97f;
+}
+
+.links p.active {
+  color: #4db97f;
+  font-weight: 600;
 }
 
 /* LOGOUT */
